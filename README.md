@@ -1,9 +1,6 @@
-# pizza-wala
-This app is for pizza delivery application to order pizza by customers themselves
-
 # 🍕 Real-Time Pizza Shop Order & Tracker App
 
-This is a comprehensive, hands-on architectural project designed to showcase end-to-end event streaming, distributed caching, containerisation, and local cloud orchestration using a Domino's-style real-time tracking pipeline.
+This is a comprehensive, hands-on architectural project designed to showcase end-to-end event streaming, structural object creation, distributed caching, containerisation, and local cloud orchestration using a Domino's-style real-time tracking pipeline.
 
 ---
 
@@ -42,32 +39,49 @@ Ensure you run the commands matching your native operating system before coding:
 
 To make this a highly professional project, the architecture explicitly implements these critical software design paradigms:
 
-### 1. CQRS (Command Query Responsibility Segregation)
+### 1. Structural Pattern: The Decorator Pattern
+*   **How it is applied:** Instead of creating hundreds of individual classes for every combination of pizza toppings (e.g., `CheesePizza`, `PepperoniAndJalapenoPizza`), you create a base `PlainPizza` class. When a user checks toppings on the React UI, your Spring Boot controller dynamically wraps (decorates) the base pizza object at runtime to calculate the final price and description before sending it to Kafka.
+*   **Why it matters:** It satisfies the **Open/Closed Principle**. You can add 20 new pizza toppings in the future by just creating new decorator classes. You never have to touch or risk breaking your existing `PlainPizza` core code.
+
+### 2. CQRS (Command Query Responsibility Segregation)
 *   **How it is applied:** The application completely separates data write pathways from data read pathways.
     *   *The Command Path:* The user posts an order (`POST /orders`). This writes exclusively to the Kafka Event Log. It does not wait for a database or state engine update.
     *   *The Query Path:* The user requests the current status (`GET /orders/{id}`). This reads exclusively from the ultra-fast Redis Cache.
 *   **Why it matters:** It prevents read operations from locking up write operations, ensuring your system remains highly available even during massive traffic spikes.
 
-### 2. Event-Driven Architecture (EDA) & Choreography
+### 3. Event-Driven Architecture (EDA) & Choreography
 *   **How it is applied:** Components communicate asynchronously via events. The Spring Boot backend acts as two completely decoupled services bundled together: a Producer that issues messages to a `pizza-orders` topic, and a Consumer that independently listens, reacts, and increments processing stages in the background.
 *   **Why it matters:** Eliminates tight coupling. If the consumer kitchen service fails, the API can still accept client orders because Kafka stores them safely in an immutable queue.
 
-### 3. Schema Governance (Data Contract Principle)
+### 4. Schema Governance (Data Contract Principle)
 *   **How it is applied:** Instead of passing loose, unstructured JSON payloads across the network, the project enforces an **Apache Avro Schema contract** controlled via the Confluent Schema Registry.
 *   **Why it matters:** It guarantees type safety, slashes payload network size via binary encoding, and enforces backward/forward compatibility. Downstream systems will never break due to unexpected field changes.
 
-### 4. Cache-Aside Pattern
+### 5. Cache-Aside Pattern
 *   **How it is applied:** The system uses the Redis In-Memory cluster to house short-lived, volatile tracking data. The React UI continuously polls this high-performance layer instead of generating heavy, repetitive database queries.
 *   **Why it matters:** Protects your persistent database layers from read exhaustion during high-frequency status checking.
 
-### 5. SOLID Principles Highlighted
+### 6. SOLID Principles Highlighted
 *   **Single Responsibility Principle (SRP):** Controllers only handle incoming transport payloads; Producers only handle transmission mechanics; Consumers only handle business logic state changes.
-*   **Dependency Inversion Principle (DIP):** Spring’s `@Autowired` and interface structures injection are leveraged so high-level business rules do not depend on low-level infrastructure engines.
+*   **Dependency Inversion Principle (DIP):** Spring’s `@Autowired` core is used to depend on abstractions, keeping the business logic isolated from your infrastructure tools (like Kafka and Redis).
 
 ---
 
 ## 🏗️ System Architecture & Services
-[ React UI Dashboard ]│ (1) HTTP POST /orders (Write Command)▼[ Spring Boot API (Producer) ]│ (2) Serializes payload to Avro -> Publishes event▼[ Apache Kafka Broker ] (Topic: pizza-orders)│ (3) Asynchronous Stream Processing▼[ Spring Boot Core (Consumer) ]│ (4) Simulates cooking time -> Mutates State▼[ Redis Cache Cluster ] <─── (5) HTTP GET Status Polling (Read Query) ─── [ React UI Dashboard ]
+
+[ React UI Dashboard ]
+│ (1) HTTP POST /orders (Write Command)
+▼
+[ Spring Boot API (Producer) ]
+│ (2) Serializes payload to Avro -> Publishes event
+▼
+[ Apache Kafka Broker ] (Topic: pizza-orders)
+│ (3) Asynchronous Stream Processing
+▼
+[ Spring Boot Core (Consumer) ]
+│ (4) Simulates cooking time -> Mutates State
+▼
+[ Redis Cache Cluster ] <─── (5) HTTP GET Status Polling (Read Query) ─── [ React UI Dashboard ]
 
 ---
 
